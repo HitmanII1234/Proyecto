@@ -1,12 +1,10 @@
-﻿from re import A
-import sys
-import os
+﻿import os
 from PyQt5 import QtWidgets, QtCore
-from PyQt5.QtWidgets import QDialog, QApplication, QMessageBox
+from PyQt5.QtWidgets import QDialog, QMessageBox
 from PyQt5.uic import loadUi
 
 class Recepcion(QDialog):
-    def __init__(self, widget, db):
+    def __init__(self, widget, db, c_name):
         super(Recepcion, self).__init__()
         self.original_widget = widget  # Guardar referencia al widget
         self.db = db  # Guardar referencia a la db
@@ -16,13 +14,14 @@ class Recepcion(QDialog):
         self.color=['#589f37','#cca20c','#a12000']
         self.color_sub=['#5eaa3b','#d6ab0d','#ad2500']
         self.color_sub2=['#6cc644','#f6c40f','#bd2c00']
+        self.encargado_name.setText(c_name)
 
         self.Reservaciones.hide()
         self.Reservaciones_2.hide()
         self.Reservaciones_3.hide()
         self.Reservaciones_4.hide()
         self.cargar_mesas()
-        self.act_resv_widget()
+        self.act_table()
 
         self.m_1.clicked.connect(lambda: self.upd_mesa(1, db))
         self.m_2.clicked.connect(lambda: self.upd_mesa(2, db))
@@ -48,6 +47,7 @@ class Recepcion(QDialog):
 
         self.b_agregar_resv_2.clicked.connect(self.agregar_resv)
         self.b_editar_resv_3.clicked.connect(self.edt_resv)
+        self.b_eliminar_resv_4.clicked.connect(self.delete_resv)
 
         self.b_salir_1.clicked.connect(self.salir)
 
@@ -59,7 +59,7 @@ class Recepcion(QDialog):
         try:
             self.db.dbcursor.execute("INSERT INTO Users.mesas_resv (nombre, cantidad, fecha, hora) VALUES (%s, %s, %s, %s);", (self.resv_2_name.text(), self.resv_2_cant.text(), self.resv_2_fecha.text(), self.resv_2_hora.text()))
             self.db.commit()
-            self.act_resv_widget()
+            self.act_table()
             self.Reservaciones_2.hide()
             self.Reservaciones.show()
         except Exception as e:
@@ -69,50 +69,71 @@ class Recepcion(QDialog):
     def edt_resv(self):
         if not all(self.resv_3_codigo.text()):
             QMessageBox.warning(self, "Búsqueda vacía", "Por favor, introduzca un codigo.")
-            return
         try:
-            a1= ''
-            a2 = ''
-            a3 = ''
-            a4 = ''
-            n=0
-            v = {}
+            campos = []
+            values = [] 
             if not self.resv_3_name.text().strip() == '':
-                a1 = 'name = %s,'
-                n=+1
-                v.append(1)
+                a1 = "nombre = %s"
+                campos.append(a1)
+                values.append(self.resv_3_name.text().strip())
             if not self.resv_3_cantidad.text().strip() == '':
-                a2 = 'cantidad = %s,'
-                n=+1
-                v.append(2)
+                a2 = "cantidad = %s"
+                campos.append(a2)
+                values.append(self.resv_3_cantidad.text().strip())
             if not self.resv_3_fecha.text().strip() == '':
-                a3 = 'fecha = %s,'
-                n=+1
-                v.append(3)
+                a3 = "fecha = %s"
+                campos.append(a3)
+                values.append(self.resv_3_fecha.text().strip())
             if not self.resv_3_hora.text().strip() == '':
-                a4 = 'hora = %s,'
-                n = +1
-                v.append(4)
+                a4 = "hora = %s"
+                campos.append(a4)
+                values.append(self.resv_3_hora.text().strip())
             
-            for n in range(v):
-                print(v[n])
-            print(f"UPDATE Users.mesas_resv SET {a1}{a2}{a3}{a4} WHERE id_resv = %s;")
-
-
-
-        except Exception as e:
-            print(e)
+            campos_clause = ", ".join(campos)
+            values.append(self.resv_3_codigo.text())
+            try:
+                self.db.dbcursor.execute(f"UPDATE Users.mesas_resv SET {campos_clause} WHERE id_resv = %s;", values)
+                self.db.commit()
+                self.act_table()
+                self.act_table()
+                self.Reservaciones_3.hide()
+                self.resv_3_codigo.clear()
+                self.resv_3_name.clear()
+                self.resv_3_cantidad.clear()
+                self.resv_3_fecha.clear()
+                self.resv_3_hora.clear()
+            except:
+                QMessageBox.warning(self, "Error", "Verifique los campos.")
+        except:
             QMessageBox.warning(self, "Error", "Verifique los campos")
 
-    def act_resv_widget(self):
-        self.db.dbcursor.execute("SELECT id_resv, nombre, cantidad, fecha, hora FROM Users.mesas_resv")
-        data = self.db.dbcursor.fetchall()
-        self.resv_widget.setRowCount(len(data))
-        for n, row in enumerate(data):
-            for m, item in enumerate(row):
-                self.resv_widget.setItem(
-                    n, m, QtWidgets.QTableWidgetItem(str(item)))
-        self.resv_widget.resizeColumnsToContents()
+    def delete_resv(self):
+        if not self.resv_4_codigo.text():
+            QMessageBox.warning(self, "Búsqueda vacía", "Por favor, introduzca un codigo.")
+        try:
+            code = int(self.resv_4_codigo.text())
+            self.db.dbcursor.execute("DELETE FROM Users.mesas_resv WHERE id_resv = %s;", (code,))
+            self.db.commit()
+            self.act_table()
+            self.Reservaciones_4.hide()
+            self.resv_4_codigo.clear()
+        except:
+            QMessageBox.warning(self, "Error", "No se pudo eliminar la reservación. Verifique los datos")
+
+    def act_table(self):
+        try:
+            self.resv_widget.setRowCount(0)
+            self.db.dbcursor.execute("SELECT id_resv, nombre, cantidad, fecha, hora FROM Users.mesas_resv")
+            data = self.db.dbcursor.fetchall()
+            self.resv_widget.setRowCount(len(data))
+            for n, row in enumerate(data):
+                for m, item in enumerate(row):
+                    self.resv_widget.setItem(
+                        n, m, QtWidgets.QTableWidgetItem(str(item)))
+            self.resv_widget.resizeColumnsToContents()
+        except:
+            QMessageBox.warning(self, "Error", "Error en la funcion act_table")
+            return
 
     def upd_mesa(self, n, db):
         button = getattr(self, f'm_{n}')
@@ -168,8 +189,8 @@ class Recepcion(QDialog):
 
 
 
-def a2(db, widget):
-    recep_w = Recepcion(widget, db)
+def a2(db, widget, c_name):
+    recep_w = Recepcion(widget, db, c_name)
     widget.addWidget(recep_w)
     widget.setFixedWidth(1091)
     widget.setFixedHeight(501)

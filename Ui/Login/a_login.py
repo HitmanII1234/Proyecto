@@ -4,9 +4,6 @@ from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWidgets import QDial, QDialog, QApplication, QMessageBox
 from PyQt5.uic import loadUi
 
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.insert(0, parent_dir)
-
 class Login(QDialog):
     def __init__(self, widget,db):
         super(Login, self).__init__()

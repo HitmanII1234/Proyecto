@@ -4,15 +4,28 @@
         self._password = password
 
     def login(self,db,widget):
-        db.dbcursor.execute("SELECT rol FROM Users.rol WHERE id_emp = %s AND password = %s", (self._id_emp, self._password)) #Usando el argumento para usar el cursor
-        result = db.dbcursor.fetchone()
+        db.dbcursor.execute("""SELECT usr.name, usr.surname, rol.rol 
+                            FROM Users.usr AS usr
+                            INNER JOIN Users.rol AS rol 
+                            ON usr.id_emp = rol.id_emp
+                            WHERE rol.id_emp = %s AND rol.password = %s""", (self._id_emp, self._password))
+
+        result = db.dbcursor.fetchall()
+        name = result[0][0]
+        surname = result[0][1]
+        c_name = name + " " + surname
+        rol = result[0][2]
         try:
-            if result[0] == "Recepcion":
+            if rol == "Recepcion":
                 from Ui.Recepcion.a_recep import a2
-                a2(db,widget)
-            elif result[0] == "Bodega":
+                a2(db, widget, c_name)
+            elif rol == "Bodega":
                 from Ui.Almacen.a_almacen import a3
                 a3(db, widget)
+            elif rol == "Cocina":
+                from Ui.Cocina.a_cocina import a4
+                a4(db, widget)
         except Exception as e:
             print(e)
             return True
+        
